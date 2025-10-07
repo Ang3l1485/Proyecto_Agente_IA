@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>{% block title %}Mi Proyecto Django{% endblock %}</title>
+    
+    <link href="{% static 'dist/css/output.css' %}" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <header class="bg-white shadow-md">
+        <nav class="container mx-auto px-6 py-4">
+            <a href="/" class="text-xl font-bold text-gray-800">Mi App</a>
+            <div class="float-right">
+                {% if user.is_authenticated %}
+                    <span class="mr-4">Hola, {{ user.first_name|default:user.username }}</span>
+                    <a href="{% url 'users:logout' %}" class="btn btn-sm btn-outline">Logout</a>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="btn btn-sm btn-primary">Login</a>
+                    <a href="{% url 'users:signup' %}" class="btn btn-sm btn-ghost">Signup</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        {% block content %}
+        {% endblock %}
+    </main>
+    
+    <footer class="text-center py-4">
+        <p class="text-gray-500">&copy; 2025 Mi Proyecto.</p>
+    </footer>
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+</html>

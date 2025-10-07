@@ -1,0 +1,65 @@
+# Entorno Virtual de Python
+# Nunca subas tu entorno virtual al repositorio.
+venv/
+env/
+.venv/
+.env/
+
+# Archivos de configuración de secretos y variables de entorno
+# ¡MUY IMPORTANTE! Contiene claves secretas, contraseñas de base de datos, etc.
+.env
+local_settings.py
+*.local
+
+# Base de datos local de desarrollo
+# La base de datos de producción será diferente y la local solo contiene datos de prueba.
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos generados por Django
+# Directorio donde se recopilan los archivos estáticos para producción.
+staticfiles/
+static_root/
+# Directorio para archivos subidos por los usuarios (imágenes, documentos, etc.).
+media/
+
+# Archivos de caché de Python
+# Se generan automáticamente y no son necesarios en el repositorio.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de configuración de editores de código e IDEs
+# Evita conflictos de configuración entre desarrolladores.
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de logs y temporales
+*.log
+*.pot
+*.swp
+
+# Dependencias y paquetes de Python
+*.egg-info/
+pip-wheel-metadata/
+build/
+dist/
+
+# Node.js / Tailwind
+node_modules/
+package-lock.json
+yarn.lock
+.cache/
+.parcel-cache/
+dist/css/
+
+# Archivos generados por Tailwind
+theme/static/dist/
+*.css.map
