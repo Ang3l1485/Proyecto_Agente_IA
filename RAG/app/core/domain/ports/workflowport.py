@@ -6,4 +6,5 @@ class WorkflowPort(ABC):
     def run(self,input_text: str):
 
         raise NotImplementedError
+
     
