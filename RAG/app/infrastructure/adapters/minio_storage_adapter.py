@@ -19,7 +19,6 @@ def _limpiar_nombre_archivo(nombre: str) -> str:
     safe = ascii_name.replace(" ", "_")
     return "".join(ch for ch in safe if ch.isalnum() or ch in ("_", ".", "-", "+"))
 
-
 class MinioStorageAdapter(storage_port.StoragePort):
 
     def __init__(
@@ -44,8 +43,8 @@ class MinioStorageAdapter(storage_port.StoragePort):
         )
 
     def _ensure_bucket(self) -> None:
-            if not self.client.bucket_exists(self.bucket):
-                self.client.make_bucket(self.bucket)
+            if not self.client.bucket_exists(self.bucket_name):
+                self.client.make_bucket(self.bucket_name)
 
     def save_document_client(
         self,client_id: str,
