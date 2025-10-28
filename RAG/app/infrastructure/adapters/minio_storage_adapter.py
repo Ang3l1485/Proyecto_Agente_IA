@@ -45,7 +45,7 @@ class MinioStorageAdapter(storage_port.StoragePort):
     def _ensure_bucket(self) -> None:
             if not self.client.bucket_exists(self.bucket_name):
                 self.client.make_bucket(self.bucket_name)
-
+    #Guarda el documento de un cliente en minio
     def save_document_client(
         self,client_id: str,
         agent_id: str,
@@ -74,5 +74,21 @@ class MinioStorageAdapter(storage_port.StoragePort):
             length=file_size,
             content_type="application/octet-stream"
         )
-
         return object_name
+    
+    # Obtiene el documento de un cliente desde minio
+    def get_document_client(
+        self,
+        object_key: str
+    ) -> bytes:
+        try:
+            response = self.client.get_object(
+                bucket_name=self.bucket_name,
+                object_name=object_key
+            )
+            data = response.read()
+            response.close()
+            response.release_conn()
+            return data
+        except S3Error as e:
+            raise Exception(f"Error retrieving document: {e}")

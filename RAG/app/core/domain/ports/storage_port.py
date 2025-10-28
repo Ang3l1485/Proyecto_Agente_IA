@@ -11,5 +11,12 @@ class StoragePort(ABC):
         file_name: str) -> str:
         
         raise NotImplementedError
+    
+    @abstractmethod
+    def get_document_client(
+        self,
+        object_key: str
+    ) -> bytes:
+        raise NotImplementedError
     #Guardar el documento en una base vectorial para un agente
     
