@@ -1,12 +1,7 @@
-from abc import ABC, abstractmethod
+# app/core/domain/ports/chunking_port.py
+from typing import Iterable
+from app.core.domain.models import chunk
 
-
-class ChunckingPort(ABC):
-    @abstractmethod
-    def chunk_document(
-        self,
-        document_bytes: bytes,
-        chunk_size: int,
-        overlap_size: int
-    ) -> list[str]:
+class ChunkingPort:
+    def split_file(self, file_bytes: bytes, file_name: str, base_metadata: dict) -> Iterable[chunk]:
         raise NotImplementedError
