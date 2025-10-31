@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import uuid
 import tempfile
+import os
 from typing import Iterable, List, Dict, Any, Optional
 
 # Unstructured
@@ -11,6 +12,12 @@ from unstructured.documents.elements import Element, Table
 
 # LangChain Splitter
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# Fallback PDF (solo texto)
+try:
+    from pypdf import PdfReader
+except Exception:
+    PdfReader = None
 
 # Domain
 from app.core.domain.models import Chunk
@@ -53,72 +60,155 @@ class UnstructuredLangChainChunkingAdapter(ChunkingPort):
         """
         Split a binary document (PDF, DOCX, etc.) into smart chunks with structure-aware parsing.
         """
+        print(f"[chunking] split_file: bytes_in={len(file_bytes)} name={file_name}")
         # 1) para escribir los bytes a un archivo temporal y analizar con Unstructured
         with tempfile.NamedTemporaryFile(suffix=self._suffix_from_name(file_name), delete=True) as tmp:
             tmp.write(file_bytes)
             tmp.flush()
+            print(f"[chunking] temp file created: {tmp.name}")
 
             # 2) lo analiza con Unstructured para obtener elementos estructurados
             elements = self._parse_with_unstructured(tmp.name)
 
+        print(f"[chunking] partition() -> elements={len(elements)}")
+
         # 3) Convierte los elementos con metadatos en documentos mínimos para LangChain
         docs = self._elements_to_docs(elements, base_metadata=base_metadata)
+        print(f"[chunking] _elements_to_docs -> docs={len(docs)}")
 
         # 4) De acuerdo con estos documentos, langchain los divide en fragmentos y hace chunks inteligentes
         split_docs = self.splitter.split_documents(docs)  # retorna una lista de los documentos divididos
+        print(f"[chunking] splitter.split_documents -> chunks={len(split_docs)}")
+        if not split_docs:
+            print("[chunking][WARN] split_documents returned 0 chunks")
 
         # 5) Construye los Chunk del dominio con los fragmentos resultantes y sus metadatos
         for i, d in enumerate(split_docs):
+            if not d.page_content.strip():
+                print(f"[chunking][WARN] chunk[{i}] empty page_content len={len(d.page_content)}")
+            elif len(d.page_content) < 32:
+                print(f"[chunking][INFO] chunk[{i}] short page_content len={len(d.page_content)}")
+
             meta = dict(d.metadata or {})
             meta["chunk_index"] = str(i)
             # optional: include length for quick QC
             meta["length"] = str(len(d.page_content))
+
             yield Chunk(
                 id=str(uuid.uuid4()),
-                text=d.page_content,
+                content=d.page_content,
                 metadata=meta,
             )
 
     # --- Funciones internas ---
     def _suffix_from_name(self, filename: str) -> str:
         dot = filename.rfind(".")
-        return filename[dot:] if dot != -1 else ""
+        # Fallback a .pdf para que el parser elija el lector correcto
+        return filename[dot:] if dot != -1 else ".pdf"
 
     def _parse_with_unstructured(self, path: str) -> List[Element]:
         """
-        Calls unstructured.partition.auto.partition with proper OCR toggles for scanned PDFs.
+        Solo texto (sin OCR). Intenta:
+        1) partition_pdf(..., strategy="fast") para PDFs (pdfminer)
+        2) partition(filename=..., strategy="fast")
+        3) Si aún 0 elementos, reintenta con file=BytesIO y file_filename=...
+        4) Fallback final: PyPDF (sin OCR) para extraer texto básico por página.
         """
+        print(f"[chunking] _parse_with_unstructured: path={path}")
         kwargs: Dict[str, Any] = {
-            # heuristic layout detection for PDFs, PPTs, etc.
-            "strategy": "auto",
-            "infer_table_structure": True,  # helps get Table elements with structure
+            "strategy": "fast",          # sin OCR
+            "infer_table_structure": True,
         }
+        print(f"[chunking] _parse_with_unstructured kwargs={kwargs}")
 
-        # OCR options if needed
-        if self.ocr_mode == "hi_res":
-            kwargs["strategy"] = "hi_res"
-        elif self.ocr_mode == "fast":
-            kwargs["strategy"] = "fast"
+        elements: List[Element] = []
 
-        if self.ocr_languages:
-            kwargs["ocr_languages"] = self.ocr_languages
+        # 1) Para PDFs, intenta directamente partition_pdf (fast/pdfminer)
+        if path.lower().endswith(".pdf"):
+            try:
+                from unstructured.partition.pdf import partition_pdf
+                print("[chunking] using partition_pdf (fast)")
+                elements = partition_pdf(filename=path, **kwargs)
+            except Exception as e:
+                print(f"[chunking][WARN] partition_pdf fallo: {e}. Fallback a partition(auto).")
 
-        elements: List[Element] = partition(filename=path, **kwargs)
+        # 2) Fallback: auto.partition con filename
+        if not elements:
+            try:
+                elements = partition(filename=path, **kwargs)
+            except Exception as e:
+                print(f"[chunking][ERROR] partition(filename=...) fallo: {e}")
+
+        # 3) Fallback: auto.partition pasando binario y file_filename
+        if len(elements) == 0:
+            try:
+                base_name = os.path.basename(path) or "upload.pdf"
+                if "." not in base_name:
+                    base_name += ".pdf"
+                print(f"[chunking] retry with file=BytesIO, file_filename='{base_name}'")
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                elements = partition(file=io.BytesIO(data), file_filename=base_name, **kwargs)
+            except Exception as e:
+                print(f"[chunking][ERROR] partition(file=...) fallo: {e}")
+
+        # 4) Fallback final: PyPDF (sin OCR) si sigue vacío
+        if len(elements) == 0 and path.lower().endswith(".pdf"):
+            if PdfReader is None:
+                print("[chunking][FALLBACK] PyPDF no instalado. Instala pypdf para fallback de solo texto: pip install pypdf")
+            else:
+                try:
+                    print("[chunking][FALLBACK] Intentando extracción de texto con PyPDF...")
+                    reader = PdfReader(path)
+                    if getattr(reader, "is_encrypted", False):
+                        print("[chunking][FALLBACK] PDF encriptado. Intentando decrypt('')...")
+                        try:
+                            reader.decrypt("")
+                        except Exception as e:
+                            print(f"[chunking][FALLBACK][WARN] decrypt('') fallo: {e}")
+
+                    simple_elements: List[Element] = []
+                    total_pages = len(reader.pages)
+                    print(f"[chunking][FALLBACK] Páginas detectadas: {total_pages}")
+                    for i, page in enumerate(reader.pages, start=1):
+                        try:
+                            txt = page.extract_text() or ""
+                        except Exception as e:
+                            print(f"[chunking][FALLBACK][ERROR] extract_text page={i} fallo: {e}")
+                            txt = ""
+                        if not txt.strip():
+                            print(f"[chunking][FALLBACK][INFO] page[{i}] sin texto o vacío")
+                            continue
+                        # Crear un “elemento” simple compatible con _elements_to_docs
+                        simple_elements.append(_SimpleElement(text=txt, page_number=i))
+
+                    elements = simple_elements  # type: ignore[assignment]
+                    print(f"[chunking][FALLBACK] PyPDF generó {len(simple_elements)} elementos con texto")
+                except Exception as e:
+                    print(f"[chunking][FALLBACK][ERROR] PyPDF fallo: {e}")
+
+        print(f"[chunking] _parse_with_unstructured: got elements={len(elements)}")
+        if len(elements) == 0:
+            print("[chunking][HINT] 0 elementos. Posibles causas: PDF escaneado (solo imágenes) o faltan extras 'unstructured[pdf]'.")
+            print("[chunking][HINT] Verifica dependencias en este venv: pip show unstructured pdfminer.six pypdf")
         return elements
 
     def _elements_to_docs(self, elements: List[Element], base_metadata: dict) -> List[_LC_Document]:
-        """
-        Convert Unstructured elements into a minimal Document-like structure that LangChain expects:
-          - page_content: str
-          - metadata: dict
-
-        We keep section headers and page numbers if present.
-        """
         docs: List[_LC_Document] = []
+        valid_count = 0
+        total = len(elements)
+        print(f"[chunking] _elements_to_docs: start total_elements={total}")
         for idx, el in enumerate(elements):
             text = el.text or ""
+            raw_len = len(text)
+            if raw_len == 0:
+                print(f"[chunking] el[{idx}] {el.__class__.__name__}: raw_len=0 (no text)")
+            elif raw_len < 32:
+                print(f"[chunking] el[{idx}] {el.__class__.__name__}: raw_len={raw_len} (short)")
+
             if not text.strip():
                 continue
+            valid_count += 1
 
             # Tables: optionally keep them as a single block (preserves structure)
             if isinstance(el, Table) and self.prefer_table_as_block:
@@ -148,8 +238,15 @@ class UnstructuredLangChainChunkingAdapter(ChunkingPort):
             if header_prefix:
                 page_content = f"{header_prefix}\n\n{page_content}"
 
+            final_len = len(page_content)
+            if final_len == 0:
+                print(f"[chunking][WARN] doc from el[{idx}] is empty after processing")
+            elif final_len < 32:
+                print(f"[chunking][INFO] doc from el[{idx}] final_len={final_len} (short)")
+
             docs.append(_LC_Document(page_content=page_content, metadata=metadata))
 
+        print(f"[chunking] _elements_to_docs: valid_text_elements={valid_count}, docs_generated={len(docs)}")
         return docs
 
     def _extract_section_headers(self, el: Element) -> List[str]:
@@ -189,6 +286,17 @@ class UnstructuredLangChainChunkingAdapter(ChunkingPort):
         return "\n".join(lines)
 
 
+class _SimpleElement:
+    """
+    Elemento mínimo para fallback (compatible con _elements_to_docs).
+    Solo provee .text y .metadata['page_number'].
+    """
+    def __init__(self, text: str, page_number: Optional[int] = None) -> None:
+        self.text = text
+        self.metadata: Dict[str, Any] = {}
+        if page_number is not None:
+            self.metadata["page_number"] = page_number
+
 class _LC_Document:
     """
     Minimal stand-in for a LangChain Document (so we don’t import langchain.schema).
@@ -197,3 +305,4 @@ class _LC_Document:
     def __init__(self, page_content: str, metadata: Dict[str, Any] | None = None) -> None:
         self.page_content = page_content
         self.metadata = metadata or {}
+
