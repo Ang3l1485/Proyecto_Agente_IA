@@ -2,7 +2,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException,BackgroundTasks
 from pydantic import BaseModel, Field
 
-# Pueros
+# Puertos
 from app.core.domain.ports.storage_port import StoragePort
 from app.core.domain.ports.vector_port import VectorPort
 from app.core.domain.ports.embedding_port import EmbeddingPort
@@ -12,7 +12,7 @@ from app.core.domain.ports.chunking_port import ChunkingPort
 from app.infrastructure.adapters.minio_storage_adapter import MinioStorageAdapter
 from app.infrastructure.adapters.qdrant_adapter import QdrantVectorAdapter
 from app.infrastructure.adapters.openai_embedding_adapter import OpenAIEmbeddingAdapter
-from app.infrastructure.adapters.unstructed_langchain_chunking_adapter import UnstructuredLangChainChunkingAdapter
+from app.infrastructure.adapters.langchain_chunking_adapter import LangChainChunkingAdapter
 
 # Servicios
 
@@ -39,7 +39,7 @@ def get_storage_service(
 
 def get_process_document_service(
     storage_port: StoragePort = Depends(get_storage_port),
-    chunking_port: ChunkingPort = Depends(lambda: UnstructuredLangChainChunkingAdapter()),
+    chunking_port: ChunkingPort = Depends(lambda: LangChainChunkingAdapter()),
     embedding_port: EmbeddingPort = Depends(lambda: OpenAIEmbeddingAdapter()),
     vector_port: VectorPort = Depends(lambda: QdrantVectorAdapter()),
 ) -> ProcessingDocumentService:
