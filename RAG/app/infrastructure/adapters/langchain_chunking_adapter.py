@@ -53,6 +53,7 @@ class LangChainChunkingAdapter(ChunkingPort):
             meta["chunk_index"] = str(i)
             meta["length"] = str(len(d.page_content))
 
+
             yield Chunk(
                 id=str(uuid.uuid4()),
                 content=d.page_content,

@@ -1,95 +1,87 @@
+# app/api/V1/routers/router_document.py
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks
+from typing import Annotated
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException,BackgroundTasks
-from pydantic import BaseModel, Field
-
-# Puertos
+# Importar los puertos y adaptadores necesarios
 from app.core.domain.ports.storage_port import StoragePort
 from app.core.domain.ports.vector_port import VectorPort
 from app.core.domain.ports.embedding_port import EmbeddingPort
 from app.core.domain.ports.chunking_port import ChunkingPort
+from app.core.domain.ports.save_info_client_port import SaveInfoClientPort
 
-# Adaptadores
 from app.infrastructure.adapters.minio_storage_adapter import MinioStorageAdapter
 from app.infrastructure.adapters.qdrant_adapter import QdrantVectorAdapter
 from app.infrastructure.adapters.openai_embedding_adapter import OpenAIEmbeddingAdapter
 from app.infrastructure.adapters.langchain_chunking_adapter import LangChainChunkingAdapter
-
-# Servicios
+from app.infrastructure.adapters.postgres_saveinfo_adapter import PostgresSaveInfoClientAdapter
 
 from app.application.process_document_service import ProcessingDocumentService
 from app.application.storage_service import StorageService
 
-from typing import BinaryIO
+router = APIRouter(prefix="/document", tags=["documents"])
 
-router=APIRouter(prefix="/document", tags=["documents"])
-
-# 1) Provider del Puerto (devuelve el adaptador concreto)
 def get_storage_port() -> StoragePort:
     try:
         return MinioStorageAdapter()
     except Exception as e:
-        # Turns boot errors into a 500 with a clear message
         raise HTTPException(status_code=500, detail=f"Storage init error: {e}")
-    
-# 2) Provider del Servicio (inyecta el Puerto)
-def get_storage_service(
-    storage_port: StoragePort = Depends(get_storage_port),
-) -> StorageService:
-    return StorageService(storage_port)
 
+def get_storage_service(storage_port: StoragePort = Depends(get_storage_port)) -> StorageService:
+    return StorageService(storage_port)
 def get_process_document_service(
     storage_port: StoragePort = Depends(get_storage_port),
     chunking_port: ChunkingPort = Depends(lambda: LangChainChunkingAdapter()),
     embedding_port: EmbeddingPort = Depends(lambda: OpenAIEmbeddingAdapter()),
     vector_port: VectorPort = Depends(lambda: QdrantVectorAdapter()),
+    save_info_port: SaveInfoClientPort = Depends(lambda: PostgresSaveInfoClientAdapter()),
 ) -> ProcessingDocumentService:
     return ProcessingDocumentService(
         storage_port=storage_port,
         chunking_port=chunking_port,
         embeddingPort=embedding_port,
         vector_port=vector_port,
+        save_info=save_info_port,
         batch_size=128,
     )
 
-
-# Se sube el documento y se activa la funnción de procesamiento en segundo plano
-@router.post("/upload", summary="Subir un documento para un cliente y agente específicos")
+@router.post("/upload", summary="Subir documento y/o actualizar prompt del agente")
 async def upload_document(
     background_tasks: BackgroundTasks,
-    client_id: str = Form(..., description="El ID que identifica al cliente"),
-    agent_id: str = Form(..., description="El ID que identifica al agente"),
-    token_auth: str = Form(..., description="Token de autenticación para el cliente"),
-    file: UploadFile = File(..., description="El archivo a subir"),
-    file_name: str = Form(..., description="Nombre del archivo"),
-    service: StorageService = Depends(get_storage_service),
-    process_service: ProcessingDocumentService = Depends(get_process_document_service),
+    client_id: Annotated[str, Form()],                 # requerido
+    agent_id: Annotated[str, Form()],                  # requerido
+    token_auth: Annotated[str, Form()],                # requerido
+    file: Annotated[bytes | None, File()] = None,      # opcional
+    file_name: Annotated[str | None, Form()] = None,   # opcional
+    prompt: Annotated[str | None, Form()] = None,      # opcional
+    storage_svc: StorageService = Depends(get_storage_service),
+    proc_svc: ProcessingDocumentService = Depends(get_process_document_service),
 ):
-    file_bytes = await file.read()
+    if not file and not (prompt and prompt.strip()):
+        raise HTTPException(status_code=400, detail="Debe enviar un archivo o un prompt (o ambos).")
 
-    object_key = service.save_document_client(
-        client_id=client_id,
-        agent_id=agent_id,
-        token_auth=token_auth,
-        file=file_bytes,
-        file_name=file_name or file.filename,
-    )
+    object_key = None
+    if file:
+        file_bytes = await file.read()
+        object_key = storage_svc.save_document_client(
+            client_id=client_id,
+            agent_id=agent_id,
+            token_auth=token_auth,
+            file=file_bytes,
+            file_name=(file_name or file.filename),
+            prompt=prompt,
+        )
 
-     # Define valores para vectorización
     collection = f"client_{client_id}"
-    doc_id = object_key
+    doc_id = object_key or ""
 
     background_tasks.add_task(
-        process_service.process_and_store_vector_document,
+        proc_svc.process_and_store_vector_document,
         object_key=object_key,
-        file_name=file_name,
+        file_name=(file_name or (file.filename if file else None)),
         client_id=client_id,
         agent_id=agent_id,
         collection=collection,
-        doc_id=doc_id
+        doc_id=doc_id,
+        prompt=prompt,
     )
-
-    
-    return {
-        "message": "Documento subido correctamente. Subiendo a la base vectorial en segundo plano.",
-        "object_key": object_key
-    }
+    return {"message": "Tarea encolada", "object_key": object_key}
