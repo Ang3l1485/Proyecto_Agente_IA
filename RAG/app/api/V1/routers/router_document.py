@@ -8,13 +8,13 @@ from app.core.domain.ports.vector_port import VectorPort
 from app.core.domain.ports.embedding_port import EmbeddingPort
 from app.core.domain.ports.chunking_port import ChunkingPort
 from app.core.domain.ports.save_info_client_port import SaveInfoClientPort
-
+# los adaptadores
 from app.infrastructure.adapters.minio_storage_adapter import MinioStorageAdapter
 from app.infrastructure.adapters.qdrant_adapter import QdrantVectorAdapter
 from app.infrastructure.adapters.openai_embedding_adapter import OpenAIEmbeddingAdapter
 from app.infrastructure.adapters.langchain_chunking_adapter import LangChainChunkingAdapter
 from app.infrastructure.adapters.postgres_saveinfo_adapter import PostgresSaveInfoClientAdapter
-
+# El servicio de procesamiento
 from app.application.process_document_service import ProcessingDocumentService
 from app.application.storage_service import StorageService
 

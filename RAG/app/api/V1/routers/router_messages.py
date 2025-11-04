@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from app.infrastructure.adapters.openai_workflow_adapter import OpenAIWorkflowAdapter
-from app.infrastructure.config.settings import settings
 import logging
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/message", tags=["messages"])
 
@@ -12,7 +11,13 @@ class RunRequest(BaseModel):
 class RunResponse(BaseModel):
     answer: str
 
-def get_adapter() -> OpenAIWorkflowAdapter:
-    # Minimal: crear el adaptador por solicitud.
-    # Cuando tengas lifespan, lo movemos allí para reusar instancia.
-    return OpenAIWorkflowAdapter(settings)
+@router.post("/response", response_model=RunResponse, summary="Process a user message through the OpenAI workflow")
+async def process_message(
+    message: str,
+    agent_id: str,
+    client_id:str,
+    timestamp: str,
+    cel_id: str,
+):
+    
+    return print("No implementado aún")
