@@ -7,7 +7,7 @@ from app.core.domain.ports.storage_port import StoragePort
 from app.core.domain.ports.vector_port import VectorPort
 from app.core.domain.ports.embedding_port import EmbeddingPort
 from app.core.domain.ports.chunking_port import ChunkingPort
-from app.core.domain.ports.save_info_client_port import SaveInfoClientPort
+from app.core.domain.ports.client_repository_port import ClientRepositoryPort as SaveInfoClientPort
 # los adaptadores
 from app.infrastructure.adapters.minio_storage_adapter import MinioStorageAdapter
 from app.infrastructure.adapters.qdrant_adapter import QdrantVectorAdapter
@@ -50,7 +50,7 @@ async def upload_document(
     client_id: Annotated[str, Form()],                 # requerido
     agent_id: Annotated[str, Form()],                  # requerido
     token_auth: Annotated[str, Form()],                # requerido
-    file: Annotated[bytes | None, File()] = None,      # opcional
+    file: Annotated[UploadFile | None, File()] = None, # opcional (UploadFile para .read() y .filename)
     file_name: Annotated[str | None, Form()] = None,   # opcional
     prompt: Annotated[str | None, Form()] = None,      # opcional
     storage_svc: StorageService = Depends(get_storage_service),
@@ -60,16 +60,19 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Debe enviar un archivo o un prompt (o ambos).")
 
     object_key = None
-    if file:
+    if file is not None:
         file_bytes = await file.read()
-        object_key = storage_svc.save_document_client(
-            client_id=client_id,
-            agent_id=agent_id,
-            token_auth=token_auth,
-            file=file_bytes,
-            file_name=(file_name or file.filename),
-            prompt=prompt,
-        )
+        # Tratar archivo vacío como "sin archivo"
+        if file_bytes and len(file_bytes) > 0:
+            object_key = storage_svc.save_document_client(
+                client_id=client_id,
+                agent_id=agent_id,
+                token_auth=token_auth,
+                file=file_bytes,
+                file_name=(file_name or file.filename),
+            )
+        else:
+            file = None  # equivale a no enviar archivo
 
     collection = f"client_{client_id}"
     doc_id = object_key or ""

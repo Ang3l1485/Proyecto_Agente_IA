@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class SaveInfoClientPort(ABC):
+class ClientRepositoryPort(ABC):
     @abstractmethod
     def save_info_document_client(self, client_id: str, agent_id: str, file_name: str, source_key: str | None = None) -> None:
         raise NotImplementedError

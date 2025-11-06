@@ -1,5 +1,4 @@
-# adapters/vector/qdrant_vector_adapter.py
-from typing import List, Dict
+from typing import List, Dict, Any
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 from app.core.domain.ports.vector_port import VectorPort
@@ -24,7 +23,7 @@ class QdrantVectorAdapter(VectorPort):
         self,
         ids: List[str],
         vectors: List[List[float]],
-        payloads: List[Dict],
+        payloads: List[Dict[str, Any]],
         collection: str,
     ) -> None:
         # Verifica que la colección exista y tenga la dimensión adecuada
@@ -43,3 +42,24 @@ class QdrantVectorAdapter(VectorPort):
         ]
 
         self.client.upsert(collection_name=collection, points=points)
+
+    def search(self, vector: List[float], collection: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Busca los puntos más cercanos al vector en la colección indicada."""
+        if not self.client.collection_exists(collection):
+            return []
+
+        results = self.client.search(
+            collection_name=collection,
+            query_vector=vector,
+            limit=top_k,
+            with_payload=True,
+            with_vectors=False,
+        )
+        parsed = []
+        for p in results:
+            parsed.append({
+                "id": str(getattr(p, "id", "")),
+                "score": float(getattr(p, "score", 0.0)),
+                "payload": getattr(p, "payload", {}) or {},
+            })
+        return parsed

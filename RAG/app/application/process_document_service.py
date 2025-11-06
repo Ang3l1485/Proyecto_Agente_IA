@@ -6,7 +6,7 @@ from app.core.domain.ports.storage_port import StoragePort
 from app.core.domain.ports.chunking_port import ChunkingPort
 from app.core.domain.ports.embedding_port import EmbeddingPort
 from app.core.domain.ports.vector_port import VectorPort
-from app.core.domain.ports.save_info_client_port import SaveInfoClientPort
+from app.core.domain.ports.client_repository_port import ClientRepositoryPort as SaveInfoClientPort
 
 class ProcessingDocumentService:
     def __init__(
