@@ -15,15 +15,26 @@ def signup_view(request):
             
             messages.success(request, '¡Tu cuenta ha sido creada exitosamente! Ya puedes iniciar sesión.')
             
-            return redirect('users:login')
+            return redirect('user:login')
             
     else:
         form = CustomUserCreationForm()
         
-    return render(request, 'users/signup.html', {'form': form})
+    # templates are located under templates/users/
+    return render(request, 'user/signup.html', {'form': form})
+
+def login_view(request):
+    if request.method == 'POST':
+        form = CustomAuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            login(request, form.get_user())
+            return redirect(settings.LOGIN_REDIRECT_URL)
+    else:
+        form = CustomAuthenticationForm()
+    return render(request, 'user/login.html', {'form': form})
 
 @login_required
 def logout_view(request):
     logout(request)
     messages.success(request, '¡Has cerrado sesión exitosamente!')
-    return redirect('users:login')
+    return redirect('user:login')

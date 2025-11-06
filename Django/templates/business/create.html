@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Crear empresa{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded shadow p-4 max-w-2xl mx-auto">
+  <h1 class="text-xl font-semibold mb-4">Crear empresa</h1>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>
+      {{ form.name.label_tag }}
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+
+    <div>
+      {{ form.description.label_tag }}
+      {{ form.description }}
+      {{ form.description.errors }}
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button class="btn btn-primary" type="submit">Crear</button>
+      <a href="{% url 'business:list' %}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

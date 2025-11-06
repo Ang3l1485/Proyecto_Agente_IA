@@ -12,3 +12,6 @@ django-browser-reload==1.12.1
 django-debug-toolbar==4.2.0
 django-compressor==4.4
 django-environ==0.11.2
+psycopg2-binary>=2.9
+requests>=2.31.0
+django-autoslug>=1.9.7

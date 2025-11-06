@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Agent{% endblock %}
+
+{% block content %}
+<div class="flex gap-6" style="height:80vh; min-height:560px; max-height:90vh;">
+  <aside class="w-1/3 bg-white rounded shadow p-4" style="overflow-y:auto; max-height:100%;">
+    <h2 class="text-lg font-semibold mb-3">Conversaciones</h2>
+
+    <form method="get" class="mb-3">
+      <label class="block text-sm text-gray-600 mb-1">Empresa</label>
+      <select name="biz" class="w-full border rounded px-2 py-1" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for biz in businesses %}
+          <option value="{{ biz.id }}" {% if selected_business and selected_business.id == biz.id %}selected{% endif %}>{{ biz.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="mt-2 text-xs">
+        <a href="{% url 'business:list' %}" class="text-blue-600 hover:underline">Gestionar empresas y documentos</a>
+      </div>
+    </form>
+
+    <div class="mb-4 flex gap-2">
+      <form method="post" class="flex-1">
+        {% csrf_token %}
+        <input name="new_title" placeholder="Nueva conversación" class="w-full border rounded px-2 py-1" />
+        {% if selected_business %}
+          <input type="hidden" name="business_id" value="{{ selected_business.id }}" />
+        {% endif %}
+      </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="start_new" value="1" />
+        {% if selected_business %}
+          <input type="hidden" name="business_id" value="{{ selected_business.id }}" />
+        {% endif %}
+        <button type="submit" class="btn btn-sm btn-ghost">Nuevo agent</button>
+      </form>
+    </div>
+
+    <ul>
+      {% for conv in conversations %}
+        <li class="mb-2">
+          <a href="{% url 'agent:detail' conv.pk %}" class="block p-2 rounded hover:bg-gray-100 {% if conversation and conversation.pk == conv.pk %}bg-gray-100 font-medium{% endif %}">
+            {{ conv.title|default:"(sin título)" }}
+            <div class="text-xs text-gray-500">Últ: {{ conv.updated_at|date:"Y-m-d H:i" }}</div>
+          </a>
+        </li>
+      {% empty %}
+        <li class="text-sm text-gray-500">No hay agentes.</li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <section class="flex-1 bg-white rounded shadow p-4 flex flex-col" style="height:100%;">
+    {% if conversation %}
+      <header class="mb-4">
+        <h3 class="text-xl font-semibold">{{ conversation.title|default:"Agent" }}</h3>
+        <div class="text-sm text-gray-500">Creada: {{ conversation.created_at|date:"Y-m-d H:i" }}</div>
+        {% if conversation.business %}
+          <div class="text-sm text-gray-600">Empresa: <strong>{{ conversation.business.name }}</strong>
+            • <a class="text-blue-600 hover:underline" href="{% url 'business:detail' conversation.business.id %}">Documentos</a>
+          </div>
+        {% endif %}
+      </header>
+
+      <section class="mb-4">
+        <form method="post" action="{% url 'agent:save_prompt' conversation.id %}">
+          {% csrf_token %}
+          <label class="block text-sm text-gray-600 mb-1">Prompt del agent</label>
+          <textarea name="system_prompt" rows="3" class="w-full border rounded p-2" placeholder="Instrucciones del agent...">{{ conversation.system_prompt }}</textarea>
+          <div class="mt-2 text-right">
+            <button type="submit" class="btn btn-sm">Guardar prompt</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="mb-4">
+        <h4 class="font-medium mb-2">Documentos del agent</h4>
+        <ul class="divide-y mb-3">
+          {% for doc in conversation.documents.all %}
+            <li class="py-2 flex items-center justify-between">
+              <div>
+                <div class="text-sm">{{ doc.original_name|default:doc.file.name }}</div>
+                <div class="text-xs text-gray-500">{{ doc.uploaded_at|date:"Y-m-d H:i" }} · {{ doc.size }} bytes</div>
+              </div>
+              <a class="text-blue-600 hover:underline text-sm" href="{{ doc.file.url }}" target="_blank">Ver</a>
+            </li>
+          {% empty %}
+            <li class="text-sm text-gray-500">Aún no hay documentos adjuntos a este agent.</li>
+          {% endfor %}
+        </ul>
+
+        <form method="post" action="{% url 'agent:upload' conversation.id %}" enctype="multipart/form-data" class="flex items-center gap-2">
+          {% csrf_token %}
+          <input type="file" name="file" class="border rounded px-2 py-1" required />
+          <button type="submit" class="btn btn-sm">Subir</button>
+        </form>
+      </section>
+
+      <div class="flex-1 overflow-auto mb-4 space-y-3" style="max-height:calc(100% - 150px);">
+        {% for msg in messages %}
+          <div class="{% if msg.role == 'user' %}text-right{% else %}text-left{% endif %}">
+            <div class="inline-block px-4 py-2 rounded-2xl {% if msg.role == 'user' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ msg.content|linebreaksbr }}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">{{ msg.created_at|date:"H:i:s" }} • {{ msg.get_role_display }}</div>
+          </div>
+        {% empty %}
+          <p class="text-sm text-gray-500">Aún no hay mensajes en este agent.</p>
+        {% endfor %}
+      </div>
+
+      <form method="post" class="mt-auto">
+        {% csrf_token %}
+        <textarea name="message" rows="3" required class="w-full border rounded p-2" placeholder="Escribe tu mensaje..."></textarea>
+        <div class="mt-2 flex justify-end">
+          <button type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+      </form>
+    {% else %}
+      {% if no_selection %}
+        <div class="flex-1 flex items-center justify-center">
+          <div class="w-full max-w-3xl text-center">
+            <h1 class="text-4xl font-semibold mb-6">Hola {{ user.first_name|default:user.username }}</h1>
+
+            <form method="post" class="mx-auto">
+              {% csrf_token %}
+              <div class="rounded-lg border px-6 py-4 shadow-sm flex items-center gap-4">
+                <div class="flex-1">
+                  <input name="new_title" type="text" placeholder="Crear un agent" class="w-full bg-transparent outline-none text-lg" />
+                </div>
+                {% if selected_business %}
+                  <input type="hidden" name="business_id" value="{{ selected_business.id }}" />
+                {% endif %}
+                <button type="submit" name="start_new" value="1" class="ml-2 px-4 py-2 rounded">Crear</button>
+              </div>
+              <div class="mt-4 text-sm">
+                <span class="mr-4">+ Herramientas</span>
+                <span class="text-muted">(Presiona Enter o pulsa Crear para iniciar)</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <p class="text-gray-600">Selecciona o crea un agent a la izquierda.</p>
+      {% endif %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

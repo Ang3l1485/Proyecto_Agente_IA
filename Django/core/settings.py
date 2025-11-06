@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 
 
 from pathlib import Path
@@ -17,19 +19,22 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_REDIRECT_URL = '/' # A dónde ir después del login
-LOGOUT_REDIRECT_URL = '/' # A dónde ir después del logout
+# Load environment variables from .env (development convenience)
+load_dotenv(BASE_DIR / '.env')
+
+AUTH_USER_MODEL = 'user.CustomUser'
+LOGIN_REDIRECT_URL = '/business/'  # A dónde ir después del login
+LOGOUT_REDIRECT_URL = '/'  # A dónde ir después del logout
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-qp3a(+q_$)(wq$2lua=5t8slxmf24k!b$2s$wa11e9a7sjjuly'
+SECRET_KEY = os.getenv('SECRET_KEY', 'dev-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h] or []
 
 
 # Application definition
@@ -44,9 +49,10 @@ INSTALLED_APPS = [
 
     # Mis aplicaciones
     'core',
-    'users',
-    'chat',
+    'user',
+    'agent',
     'theme',
+    'business',
 ]
 
 MIDDLEWARE = [
@@ -84,8 +90,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.getenv('DB_NAME', ''),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', '127.0.0.1'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        'OPTIONS': {
+            **({'sslmode': os.getenv('DB_SSLMODE')} if os.getenv('DB_SSLMODE') else {})
+        }
     }
 }
 
@@ -125,6 +139,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Media files (uploads)
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = os.getenv('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+
+RAG_API_URL = os.getenv("RAG_API_URL", "http://localhost:8001")  # ajusta según tu docker-compose del RAG
+RAG_TIMEOUT = int(os.getenv("RAG_TIMEOUT", "30"))
+RAG_CLIENT_TOKEN = os.getenv("RAG_CLIENT_TOKEN", "")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
