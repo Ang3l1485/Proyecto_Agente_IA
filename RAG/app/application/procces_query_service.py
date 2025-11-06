@@ -13,7 +13,8 @@ class ProcessQueryService:
         self._saveinfo_port = saveinfo_port
         self._prompt_ttl = prompt_ttl_seconds
         self._prompt_cache: dict[tuple[str, str], tuple[str | None, float]] = {}
-
+        
+    # Caché simple de prompts por client_id y agent_id
     def _get_prompt(self, client_id: str, agent_id: str) -> str | None:
         key = (client_id, agent_id)
         now = time.time()
