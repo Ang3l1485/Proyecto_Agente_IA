@@ -4,8 +4,8 @@ from . import views
 app_name = "agent"
 
 urlpatterns = [
-    path("", views.agent_home, name="index"),
-    path("<int:conversation_id>/", views.agent_index, name="detail"),
-    path("<int:conversation_id>/save_prompt/", views.save_prompt, name="save_prompt"),
-    path("<int:conversation_id>/upload/", views.upload_to_conversation, name="upload"),
+    path("", views.AgentHomeView.as_view(), name="index"),
+    path("<int:conversation_id>/", views.AgentIndexView.as_view(), name="detail"),
+    path("<int:conversation_id>/save_prompt/", views.SavePromptView.as_view(), name="save_prompt"),
+    path("<int:conversation_id>/upload/", views.UploadToConversationView.as_view(), name="upload"),
 ]
