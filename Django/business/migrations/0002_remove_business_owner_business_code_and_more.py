@@ -7,22 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('business', '0001_initial'),
+        ('client', '0001_initial'),
     ]
 
-    operations = [
-        migrations.RemoveField(
-            model_name='business',
-            name='owner',
-        ),
-        migrations.AddField(
-            model_name='business',
-            name='code',
-            field=models.CharField(blank=True, db_index=True, editable=False, max_length=24, unique=True),
-        ),
-        migrations.AlterField(
-            model_name='business',
-            name='slug',
-            field=autoslug.fields.AutoSlugField(blank=True, editable=False, max_length=220, populate_from='name', unique=True),
-        ),
-    ]
+    # No-op: 0001_initial already reflects the desired schema (no owner, has code, autoslug on slug)
+    operations = []

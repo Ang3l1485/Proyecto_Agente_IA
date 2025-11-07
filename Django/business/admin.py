@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Business
+from .models import Client
 
 
-@admin.register(Business)
-class BusinessAdmin(admin.ModelAdmin):
+@admin.register(Client)
+class ClientAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "slug", "code", "created_at")
     search_fields = ("name", "slug", "code", "description")
 

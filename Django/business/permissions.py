@@ -1,7 +1,7 @@
 from typing import Any
 
 
-def can_delete_business(user: Any, business: Any) -> bool:
+def can_delete_client(user: Any, business: Any) -> bool:
     """Deletion rule without owner field: only staff/superusers may delete.
 
     - Unauthenticated users: cannot delete

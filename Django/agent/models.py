@@ -4,7 +4,7 @@ from django.utils import timezone
 
 class Agent(models.Model):
     """Un agente (bot) perteneciente a una empresa y con su propio conjunto de prompts y documentos."""
-    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='agents')
+    client = models.ForeignKey('client.Client', on_delete=models.CASCADE, related_name='agents')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(default=timezone.now)
@@ -12,10 +12,21 @@ class Agent(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        unique_together = ("business", "name")  # nombre único por empresa
+        unique_together = ("client", "name")  # nombre único por cliente
 
     def __str__(self) -> str:  # pragma: no cover
-        return f"{self.name} ({getattr(self.business, 'name', 'sin empresa')})"
+        return f"{self.name} ({getattr(self.client, 'name', 'sin cliente')})"
+
+    @property
+    def active_prompt(self):
+        """Devuelve el prompt activo (o None)."""
+        return self.prompts.filter(is_active=True).order_by("-updated_at").first()
+
+    @property
+    def active_prompt_content(self) -> str:
+        """Contenido del prompt activo para usar en plantillas."""
+        ap = self.active_prompt
+        return ap.content if ap else ""
 
 
 def agent_document_path(instance, filename: str) -> str:
@@ -31,6 +42,9 @@ class Document(models.Model):
     content_type = models.CharField(max_length=100, blank=True)
     size = models.PositiveIntegerField(default=0)
     uploaded_at = models.DateTimeField(default=timezone.now)
+    uploaded_by = models.ForeignKey(
+        'user.CustomUser', null=True, blank=True, on_delete=models.SET_NULL, related_name='uploaded_documents'
+    )
 
     class Meta:
         ordering = ["-uploaded_at"]

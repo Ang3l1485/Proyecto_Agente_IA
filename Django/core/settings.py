@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 AUTH_USER_MODEL = 'user.CustomUser'
-LOGIN_REDIRECT_URL = '/business/'  # A dónde ir después del login
+LOGIN_REDIRECT_URL = '/client/'  # A dónde ir después del login
 LOGOUT_REDIRECT_URL = '/'  # A dónde ir después del logout
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'user',
     'agent',
     'theme',
-    'business',
+    'client',
 ]
 
 MIDDLEWARE = [

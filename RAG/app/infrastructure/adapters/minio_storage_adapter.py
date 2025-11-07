@@ -66,7 +66,7 @@ class MinioStorageAdapter(storage_port.StoragePort):
         # Subir el archivo a Minio
         file_size = len(file)
         file_stream = io.BytesIO(file)
-
+        print(f"[minio] put_object bucket={self.bucket_name} key={object_name} size={file_size}")
         self.client.put_object(
             bucket_name=self.bucket_name,
             object_name=object_name,
@@ -74,6 +74,7 @@ class MinioStorageAdapter(storage_port.StoragePort):
             length=file_size,
             content_type="application/octet-stream"
         )
+        print(f"[minio] uploaded key={object_name}")
         return object_name
     
     # Obtiene el documento de un cliente desde minio

@@ -6,11 +6,11 @@ import secrets
 import string
 
 
-class Business(models.Model):
+class Client(models.Model):
     name = models.CharField(max_length=200)
     # Use django-autoslug to auto-populate and ensure unique slugs
     slug = AutoSlugField(populate_from='name', unique=True, max_length=220, always_update=False, blank=True)
-    # Secure random code per business (password-like), generated automatically
+    # Secure random code per client (password-like), generated automatically
     code = models.CharField(max_length=24, unique=True, editable=False, db_index=True, blank=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -26,8 +26,8 @@ class Business(models.Model):
 
 
     def get_absolute_url(self):
-        """Return canonical URL for this Business using the slug."""
-        return reverse('business:detail', args=[self.slug])
+        """Return canonical URL for this client using the slug."""
+        return reverse('client:detail', args=[self.slug])
 
     @staticmethod
     def _generate_code(length: int = 12) -> str:

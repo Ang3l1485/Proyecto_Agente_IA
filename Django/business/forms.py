@@ -1,11 +1,11 @@
 from django import forms
 
-from .models import Business
+from .models import Client
 
 
-class BusinessForm(forms.ModelForm):
+class ClientForm(forms.ModelForm):
     class Meta:
-        model = Business
+        model = Client
         fields = [
             'name',
             'description',

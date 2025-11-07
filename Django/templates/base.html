@@ -4,41 +4,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>{% block title %}Mi Proyecto Django{% endblock %}</title>
-    
+    <title>{% block title %}Agente IA{% endblock %}</title>
     <link href="{% static 'dist/css/output.css' %}" rel="stylesheet">
+    {% block head %}{% endblock %}
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-50 text-gray-900">
 
-    <header class="bg-white shadow-md">
-        <nav class="container mx-auto px-6 py-4">
-            <a href="/" class="text-xl font-bold text-gray-800">Mi App</a>
-            <a href="/agent/" class="ml-6 text-sm text-gray-700 hover:underline">Agents</a>
-            <a href="/business/" class="ml-4 text-sm text-gray-700 hover:underline">Empresas</a>
-            <div class="float-right">
+    <header class="bg-white border-b">
+        <nav class="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="text-lg font-semibold tracking-tight">Agente IA</a>
+                <div class="hidden md:flex items-center gap-4 text-sm">
+                    <a href="{% url 'client:list' %}" class="hover:text-blue-600">Clientes</a>
+                    <a href="{% url 'agent:index' %}" class="hover:text-blue-600">Agentes</a>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
                 {% if user.is_authenticated %}
-                    <span class="mr-4">Hola, {{ user.first_name|default:user.username }}</span>
-                    <a href="{% url 'user:logout' %}" class="btn btn-sm btn-outline">Logout</a>
+                    <span class="hidden sm:inline text-gray-600">Hola, {{ user.first_name|default:user.username }}</span>
+                    <a href="{% url 'user:logout' %}" class="btn btn-sm">Salir</a>
                 {% else %}
-                    <a href="{% url 'user:login' %}" class="btn btn-sm btn-primary">Login</a>
-                    <a href="{% url 'user:signup' %}" class="btn btn-sm btn-ghost">Signup</a>
+                    <a href="{% url 'user:login' %}" class="btn btn-sm btn-primary">Entrar</a>
+                    <a href="{% url 'user:signup' %}" class="btn btn-sm btn-ghost">Registro</a>
                 {% endif %}
             </div>
         </nav>
     </header>
 
-    <main class="container mx-auto px-6 py-8">
-        {% block content %}
-        {% endblock %}
+    <main class="container mx-auto px-4 sm:px-6 py-6">
+        {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                    <div class="px-4 py-2 rounded text-sm {% if 'error' in message.tags %}bg-red-100 text-red-800{% elif 'success' in message.tags %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block page_header %}{% endblock %}
+
+        {% block content %}{% endblock %}
     </main>
-    
-    <footer class="text-center py-4">
-        <p class="text-gray-500">&copy; 2025 Mi Proyecto.</p>
+
+    <footer class="border-t py-6">
+        <div class="container mx-auto px-4 sm:px-6 text-center text-sm text-gray-500">
+            &copy; {{ now|date:"Y" }} Agente IA. Todos los derechos reservados.
+        </div>
     </footer>
 
-    {% block scripts %}
-    {% endblock %}
-
+    {% block scripts %}{% endblock %}
 </body>
 </html>

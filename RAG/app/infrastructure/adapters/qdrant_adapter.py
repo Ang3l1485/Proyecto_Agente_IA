@@ -28,6 +28,7 @@ class QdrantVectorAdapter(VectorPort):
     ) -> None:
         # Verifica que la colección exista y tenga la dimensión adecuada
         if not self.client.collection_exists(collection):
+            print(f"[qdrant] creating collection '{collection}' size={len(vectors[0])}")
             self.client.recreate_collection(
                 collection_name=collection,
                 vectors_config=VectorParams(
@@ -40,7 +41,7 @@ class QdrantVectorAdapter(VectorPort):
             PointStruct(id=ids[i], vector=vectors[i], payload=payloads[i])
             for i in range(len(ids))
         ]
-
+        print(f"[qdrant] upsert collection='{collection}' n_points={len(points)}")
         self.client.upsert(collection_name=collection, points=points)
 
     def search(self, vector: List[float], collection: str, top_k: int = 5) -> List[Dict[str, Any]]:

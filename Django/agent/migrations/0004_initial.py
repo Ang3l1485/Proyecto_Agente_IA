@@ -11,7 +11,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('business', '0001_initial'),
         ('agent', '0003_conversation_system_prompt_conversationdocument_and_more'),
     ]
 
@@ -24,11 +23,11 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(blank=True, default='')),
                 ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('business', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='agents', to='business.business')),
+                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='agents', to='client.client')),
             ],
             options={
                 'ordering': ['-updated_at'],
-                'unique_together': {('business', 'name')},
+                'unique_together': {('client', 'name')},
             },
         ),
         migrations.CreateModel(
